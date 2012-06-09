@@ -164,8 +164,8 @@ static void* alloc()
 
 	if (!block) return NULL;
 
-	/*assert(block->tag1 == BLOCK_TAG_1
-			&& block->tag2 == BLOCK_TAG_2);*/
+	assert(block->tag1 == BLOCK_TAG_1
+			&& block->tag2 == BLOCK_TAG_2);
 	assert(g_page_map[PAGE_NO(block)].use_flag == 0);
 
 	g_page_map[PAGE_NO(block)].use_flag = 1;

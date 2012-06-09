@@ -9,7 +9,6 @@ static size_t g_ctx_size;
 
 int coro_init(size_t ctx_size, size_t pool_size)
 {
-
 	g_mm_ops = coro_mm_default_ops;
 	g_ctx_size = ctx_size;
 
@@ -22,18 +21,22 @@ int coro_init(size_t ctx_size, size_t pool_size)
 	return 0;
 }
 
-static inline void check_ctx(struct coro_ctx *ctx, int prev, int next)
+static inline int check_ctx(struct coro_ctx *ctx, int prev, int next)
 {
-	do {
-		if (!ctx) break;
-		if (ctx->tag != CORO_CTX_TAG) break;
-		if (prev >= 0 && !!ctx->prev != !!prev) break;
-		if (next >= 0 && !!ctx->next != !!next) break;
-		return;
-	} while(0);
-	// bug found
-	fprintf(stderr, "bad coro ctx!\n");
-	exit(1);
+	if (!ctx) return 0;
+	if (ctx->tag != CORO_CTX_TAG) return 0;
+	if (prev >= 0 && !!ctx->prev != !!prev) return 0;
+	if (next >= 0 && !!ctx->next != !!next) return 0;
+	return 1;
+}
+
+static inline void check_ctx_or_die(struct coro_ctx *ctx, int prev, int next)
+{
+	if (!check_ctx(ctx, prev, next)) {
+		// bug found
+		fprintf(stderr, "bad coro ctx!\n");
+		abort();
+	}
 }
 
 void* coro_resume(coro_t *coro, void *arg)
@@ -41,14 +44,27 @@ void* coro_resume(coro_t *coro, void *arg)
 	struct coro_ctx main_ctx;
 	struct coro_ctx *cur, *to = coro->ctx;
 
-	check_ctx(to, 0, 0);
+	/* use a old/wild coro ? */
+	if (!check_ctx(to, 0, 0)) {
+		coro->ctx = NULL;
+		return NULL;
+	}
+
 	if ((cur = g_mm_ops->locate(&arg))) {
-		check_ctx(cur, 1, 0);
+		check_ctx_or_die(cur, 1, 0);
 	}	
 	else {
 		memset(&main_ctx, 0, sizeof(struct coro_ctx));
 		main_ctx.tag = CORO_CTX_TAG;
 		cur = &main_ctx;
+	}
+
+	//light_lock(&to->lock);
+
+	/* resumed a dying coro ? */
+	if (to->tag != CORO_CTX_TAG) {
+		coro->ctx = NULL;
+		return NULL;
 	}
 	cur->next = to;
 	to->prev = cur;
@@ -58,9 +74,14 @@ void* coro_resume(coro_t *coro, void *arg)
 
 	if (to->flag & CORO_FLAG_END) {
 		memset(to, 0, sizeof(struct coro_ctx));
+		/* give a chance to avoid dead-locking */
+		light_unlock(&to->lock);
 		g_mm_ops->release(to);
 		coro->ctx = NULL;
+	} else {
+		light_unlock(&to->lock);
 	}
+
 	return cur->ret;
 }
 
@@ -69,8 +90,8 @@ static void* do_coro_yield(void *arg, unsigned int flag)
 	struct coro_ctx *to, *cur = NULL;
 
 	cur = g_mm_ops->locate(&arg);
-	check_ctx(cur, 1, 0);
-	check_ctx(cur->prev, -1, 1);
+	check_ctx_or_die(cur, 1, 0);
+	check_ctx_or_die(cur->prev, -1, 1);
 	to = cur->prev;
 	cur->prev = NULL;
 	to->next = NULL;
@@ -92,7 +113,7 @@ static void coro_main(void* (*f)(void*))
 	void *arg, *ret;
 
 	cur = g_mm_ops->locate(&arg);
-	check_ctx(cur, 1, 0);
+	check_ctx_or_die(cur, 1, 0);
 	arg = cur->ret;
 	ret = f(arg);
 	do_coro_yield(ret, CORO_FLAG_END);
@@ -136,6 +157,7 @@ int coro_create(coro_t *coro, void* (*f)(void*))
 	memset(ctx, 0, sizeof(struct coro_ctx));
 	ctx->sp = &stack[_stack_top];
 	ctx->tag = CORO_CTX_TAG;
+	light_lock_init(&ctx->lock);
 
 	coro->ctx = ctx;
 	return 0;

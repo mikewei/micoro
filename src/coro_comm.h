@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include "coroutine.h"
+#include "mt_utils.h"
 
 struct coro_mm_ops
 {
@@ -22,6 +23,7 @@ struct coro_ctx
 	struct coro_ctx *prev;
 	struct coro_ctx *next;
 	void *ret;
+	light_lock_t lock;
 	unsigned int flag;
 	unsigned int tag;
 };
