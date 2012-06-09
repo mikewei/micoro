@@ -26,7 +26,7 @@ static void* alloc()
 	for (i = 0; i < g_pool_size && !ptr; i++) {
 		if (g_alloc_table[index] == NULL)
 			ptr = g_alloc_table[index] = malloc(g_alloc_size);
-		index = (index + 1) % g_alloc_size;
+		index = (index + 1) % g_pool_size;
 	}
 	if (ptr + g_alloc_size - 1 > g_max_addr)
 		g_max_addr = ptr + g_alloc_size - 1;

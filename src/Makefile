@@ -1,10 +1,17 @@
-BIN = testcase
 LIB = libcoro.a
-OBJ = coro_sched.o coro_sw_O0.o coro_mm_malloc.o coro_mm_pool.o
-ARCH = #-m32
-CFLAGS = -g -Wall -O0 $(ARCH)
+SRC = $(wildcard *.c)
+OBJ = $(SRC:.c=.o)
+CFLAGS = -g -Wall -MMD -O2 $(ARCH)
 
-all: $(LIB) $(BIN)
+all: libs tests
+
+all32: ARCH = -m32
+all32: all
+
+libs: $(LIB)
+
+tests:
+	make -C tests $(MAKECMDGOALS)
 
 $(LIB): $(OBJ)
 	ar r $@ $^
@@ -15,10 +22,10 @@ $(LIB): $(OBJ)
 coro_sw_O0.o: coro_sw_O0.c
 	gcc -Wall -O0 $(ARCH) -c $<
 
-testcase: testcase.o $(LIB)
-	gcc $(CFLAGS) -o $@ $< -L. -lcoro
+-include *.d
 
 clean:
-	rm -f $(LIB) $(BIN) *.o 
+	rm -f $(LIB) $(BIN) *.o *.d
+	make -C tests clean
 
-.PHONY: all clean
+.PHONY: all clean libs tests

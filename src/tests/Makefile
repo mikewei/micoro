@@ -1,5 +1,5 @@
 TEST_BIN = testcase
-PERF_BIN = lock_perf pool_perf coro_cr_perf coro_sw_perf
+PERF_BIN = lock_perf mm_perf coro_cr_perf coro_sw_perf
 BIN = $(TEST_BIN) $(PERF_BIN)
 CFLAGS = -Wall -MMD $(ARCH)
 INCLIBS = -I.. -L.. -lcoro -lpthread
