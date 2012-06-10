@@ -69,4 +69,6 @@ static inline void light_unlock(light_lock_t *lock)
 			: :"memory" );
 }
 
+int init_once(int *init_flag);
+
 #endif // __MT_UTILS_H__

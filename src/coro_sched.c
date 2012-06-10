@@ -3,19 +3,24 @@
 #include "coro_comm.h"
 #include "coro_mm.h"
 
-static struct coro_mm_ops *g_mm_ops;
-static size_t g_ctx_size;
+static int g_init_flag = 0;
+static struct coro_mm_ops *g_mm_ops = NULL; 
+static size_t g_ctx_size = 0;
 
 
 int coro_init(size_t ctx_size, size_t pool_size)
 {
+	if (init_once(&g_init_flag) < 0) {
+		fprintf(stderr, "coro init more than once!\n");
+		return -1;
+	}
+
 	g_mm_ops = coro_mm_default_ops;
 	g_ctx_size = ctx_size;
 
 	if (g_mm_ops->init(&g_ctx_size, pool_size) < 0) {
-
 		fprintf(stderr, "mm init failed!\n");
-		return -1;
+		return -2;
 	}
 
 	return 0;
@@ -163,3 +168,16 @@ int coro_create(coro_t *coro, void* (*f)(void*))
 	return 0;
 }
 
+int coro_self(coro_t *coro)
+{
+	struct coro_ctx *ctx;
+
+	coro->ctx = NULL;
+	if (!g_init_flag)
+		return -1;
+	ctx = g_mm_ops->locate(&coro);
+	if (ctx == NULL)
+		return -2;
+	coro->ctx = ctx;
+	return 0;
+}

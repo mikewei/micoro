@@ -27,7 +27,7 @@ struct page_info
 /* for 32bit atomic operation */
 CASSERT(sizeof(struct page_info) == sizeof(uint32_t));
 
-static volatile size_t g_init_once;
+static volatile size_t g_init_flag;
 static size_t g_block_pages;
 static size_t g_pool_blocks;
 static size_t g_pool_pages;
@@ -111,14 +111,10 @@ static int do_init_pool()
 
 static int init(size_t *alloc_size, size_t pool_size)
 {
-	light_lock(&g_lock);
-	if (g_init_once) {
-		light_unlock(&g_lock);
+	if (init_once(&g_init_flag) < 0) {
 		fprintf(stderr, "init multi times!");
 		return -1;
 	}
-	g_init_once = 1;
-	light_unlock(&g_lock);
 
 	g_block_pages = (*alloc_size + PAGE_SIZE - 1) >> PAGE_SHIFT;
 	g_pool_blocks = pool_size;
