@@ -1,15 +1,18 @@
 TEST_BIN = testcase
-PERF_BIN = lock_perf mm_perf coro_cr_perf coro_sw_perf
+PERF_BIN = $(patsubst %_perf.c, %_perf, $(wildcard *_perf.c))
 BIN = $(TEST_BIN) $(PERF_BIN)
+CORO_LIB = ../libcoro.a
 CFLAGS = -Wall -MMD $(ARCH)
 INCLIBS = -I.. -L.. -lcoro -lpthread
+LIB_TARGET = libs
 
 all: $(BIN)
 
 all32: ARCH = -m32
+all32: LIB_TARGET = libs32
 all32: all
 
-$(BIN): libs
+$(BIN): $(CORO_LIB)
 
 $(TEST_BIN): CFLAGS += -g
 $(TEST_BIN): %: %.c
@@ -21,8 +24,8 @@ $(PERF_BIN): %: %.c perf_main.c
 
 -include *.d
 
-libs:
-	make -C .. libs
+$(CORO_LIB): libs
+	make -C .. $(LIB_TARGET)
 
 clean:
 	rm -f $(BIN) *.o *.d

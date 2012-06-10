@@ -5,13 +5,18 @@ CFLAGS = -g -Wall -MMD -O2 $(ARCH)
 
 all: libs tests
 
-all32: ARCH = -m32
-all32: all
+all32: libs32 tests32
 
 libs: $(LIB)
 
+libs32: ARCH = -m32
+libs32: $(LIB)
+
 tests:
-	make -C tests $(MAKECMDGOALS)
+	make -C tests all
+
+tests32:
+	make -C tests all32
 
 $(LIB): $(OBJ)
 	ar r $@ $^
@@ -28,4 +33,4 @@ clean:
 	rm -f $(LIB) $(BIN) *.o *.d
 	make -C tests clean
 
-.PHONY: all clean libs tests
+.PHONY: all clean libs libs32 tests tests32

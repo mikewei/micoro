@@ -5,11 +5,10 @@
 #include "mt_utils.h"
 
 //#define MT
-//#define YIELD
+#define YIELD
 
 static light_lock_t lock = LIGHT_LOCK_INIT;
-static size_t count;
-static size_t array[1024];
+static unsigned long count;
 
 void testcase2()
 {
@@ -44,13 +43,6 @@ void prepare()
 
 void testcase()
 {
-#if 0
-	array[0] = 1;
-	array[100] = 2;
-	array[200] = 2;
-	array[300] = 2;
-	array[1000] = 3;
-#endif
 	light_lock(&lock);
 	light_unlock(&lock);
 }
