@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include <pthread.h>
 #include "coro_comm.h"
 #include "coro_mm.h"
 #include "mt_utils.h"
@@ -29,9 +28,9 @@ struct page_info
 CASSERT(sizeof(struct page_info) == sizeof(uint32_t));
 
 static volatile size_t g_init_once;
-static volatile size_t g_block_pages;
-static volatile size_t g_pool_blocks;
-static volatile size_t g_pool_pages;
+static size_t g_block_pages;
+static size_t g_pool_blocks;
+static size_t g_pool_pages;
 static void *g_pool_addr;
 static struct page_info *g_page_map;
 static struct block_info * volatile g_free_list;
@@ -187,10 +186,10 @@ static int release(void *ptr)
 	if (pi.use_flag == 0)
 		return -2;
 
+	light_lock(&g_lock);
+	/* within lock for mem concurrency */
 	block->tag1 = BLOCK_TAG_1;
 	block->tag2 = BLOCK_TAG_2;
-
-	light_lock(&g_lock);
 	block->next = g_free_list;
 	g_free_list = block;
 	light_unlock(&g_lock);
