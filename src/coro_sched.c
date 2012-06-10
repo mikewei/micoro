@@ -59,7 +59,7 @@ void* coro_resume(coro_t *coro, void *arg)
 		cur = &main_ctx;
 	}
 
-	//light_lock(&to->lock);
+	light_lock(&to->lock);
 
 	/* resumed a dying coro ? */
 	if (to->tag != CORO_CTX_TAG) {
