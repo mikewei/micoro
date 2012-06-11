@@ -155,8 +155,8 @@ static void* alloc()
 	block = g_free_list;
 	if (block) {
 		g_free_list = block->next;
-		//g_stat.alloc_count++;
-		//g_stat.use_block_num++;
+		g_stat.alloc_count++;
+		g_stat.use_block_num++;
 	}
 	light_unlock(&g_lock);
 
@@ -176,14 +176,18 @@ static int release(void *ptr)
 	struct block_info *block = ptr;
 	struct page_info pi;
 
-	if (!IN_POOL(ptr) || PTR_HEAD(ptr) != ptr)
+	if (!IN_POOL(ptr) || PTR_HEAD(ptr) != ptr) {
+		abort();
 		return -1;
+	}
 
 	pi = g_page_map[PAGE_NO(ptr)];
 	pi.use_flag = 0;
 	atom_swap32((uint32_t*)&g_page_map[PAGE_NO(ptr)], (uint32_t*)&pi);
-	if (pi.use_flag == 0)
+	if (pi.use_flag == 0) {
+		abort();
 		return -2;
+	}
 
 	light_lock(&g_lock);
 	/* within lock for mem concurrency */
@@ -191,8 +195,8 @@ static int release(void *ptr)
 	block->tag2 = BLOCK_TAG_2;
 	block->next = g_free_list;
 	g_free_list = block;
-	//g_stat.release_count++;
-	//g_stat.use_block_num--;
+	g_stat.release_count++;
+	g_stat.use_block_num--;
 	light_unlock(&g_lock);
 	
 	return 0;
