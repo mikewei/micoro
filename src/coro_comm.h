@@ -5,14 +5,6 @@
 #include "coroutine.h"
 #include "mt_utils.h"
 
-struct coro_mm_ops
-{
-	int (*init)(size_t *alloc_size, size_t pool_size);
-	void* (*alloc)();
-	int (*release)(void *ptr);
-	void* (*locate)(void *ptr);
-};
-
 #define CORO_FLAG_END 0x00000001
 
 #define CORO_CTX_TAG 0x9988abcd

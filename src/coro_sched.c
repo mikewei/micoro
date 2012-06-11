@@ -6,7 +6,7 @@
 static int g_init_flag = 0;
 static struct coro_mm_ops *g_mm_ops = NULL; 
 static size_t g_ctx_size = 0;
-
+static struct coro_stat g_stat;
 
 int coro_init(size_t ctx_size, size_t pool_size)
 {
@@ -75,6 +75,7 @@ void* coro_resume(coro_t *coro, void *arg)
 	to->prev = cur;
 	to->ret = arg;
 
+	g_stat.resume_count++;
 	coro_switch(cur, to);
 
 	if (to->flag & CORO_FLAG_END) {
@@ -102,6 +103,7 @@ static void* do_coro_yield(void *arg, unsigned int flag)
 	to->next = NULL;
 	to->ret = arg;
 	cur->flag = flag;
+	g_stat.yield_count++;
 	coro_switch(cur, to);
 	return cur->ret;
 }
@@ -181,3 +183,16 @@ int coro_self(coro_t *coro)
 	coro->ctx = ctx;
 	return 0;
 }
+
+void coro_get_stat(struct coro_stat *stat)
+{
+	struct coro_mm_stat mm_stat;
+	g_mm_ops->get_stat(&mm_stat);
+	stat->create_count = mm_stat.alloc_count;
+	stat->destroy_count = mm_stat.release_count;
+	stat->alive_coro_num = mm_stat.use_block_num;
+	stat->pool_left_num = mm_stat.free_block_num;
+	stat->resume_count = g_stat.resume_count;
+	stat->yield_count = g_stat.yield_count;
+}
+

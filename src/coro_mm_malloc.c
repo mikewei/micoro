@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "coro_comm.h"
+#include <assert.h>
 #include "coro_mm.h"
 
 static size_t g_alloc_size;
@@ -7,6 +7,8 @@ static size_t g_pool_size;
 
 static void **g_alloc_table;
 static void *g_max_addr = NULL;
+
+static struct coro_mm_stat g_stat;
 
 static int init(size_t *alloc_size, size_t pool_size)
 {
@@ -24,8 +26,11 @@ static void* alloc()
 	void *ptr = NULL;
 	size_t i;
 	for (i = 0; i < g_pool_size && !ptr; i++) {
-		if (g_alloc_table[index] == NULL)
+		if (g_alloc_table[index] == NULL) {
 			ptr = g_alloc_table[index] = malloc(g_alloc_size);
+			g_stat.alloc_count++;
+			g_stat.use_block_num++;
+		}
 		index = (index + 1) % g_pool_size;
 	}
 	if (ptr + g_alloc_size - 1 > g_max_addr)
@@ -40,6 +45,8 @@ static int release(void *ptr)
 		if (g_alloc_table[i] == ptr) {
 			g_alloc_table[i] = NULL;
 			free(ptr);
+			g_stat.release_count++;
+			g_stat.use_block_num--;
 			return 0;
 		}
 	}
@@ -59,11 +66,21 @@ static void* locate(void *ptr)
 	return NULL;
 }
 
+static void get_stat(struct coro_mm_stat *stat)
+{
+	stat->alloc_count = g_stat.alloc_count;
+	stat->release_count = g_stat.release_count;
+	stat->use_block_num = g_stat.use_block_num;
+	assert(g_pool_size >= g_stat.use_block_num);
+	stat->free_block_num = g_pool_size - g_stat.use_block_num;
+}
+
 static struct coro_mm_ops g_ops = {
 	.init = init,
 	.alloc = alloc,
 	.release = release,
-	.locate = locate
+	.locate = locate,
+	.get_stat = get_stat
 };
 
 struct coro_mm_ops *coro_mm_malloc_ops = &g_ops;

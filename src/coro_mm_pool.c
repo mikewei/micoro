@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include "coro_comm.h"
 #include "coro_mm.h"
 #include "mt_utils.h"
 
@@ -27,7 +26,7 @@ struct page_info
 /* for 32bit atomic operation */
 CASSERT(sizeof(struct page_info) == sizeof(uint32_t));
 
-static volatile size_t g_init_flag;
+static int g_init_flag;
 static size_t g_block_pages;
 static size_t g_pool_blocks;
 static size_t g_pool_pages;
@@ -35,6 +34,7 @@ static void *g_pool_addr;
 static struct page_info *g_page_map;
 static struct block_info * volatile g_free_list;
 static light_lock_t g_lock = LIGHT_LOCK_INIT;
+static struct coro_mm_stat g_stat;
 
 #define IN_POOL(addr) ((void *)(addr) < (g_pool_addr + (g_pool_pages<<PAGE_SHIFT)) \
 						&& (void *)(addr) >= g_pool_addr)
@@ -153,8 +153,11 @@ static void* alloc()
 
 	light_lock(&g_lock);
 	block = g_free_list;
-	if (block)
+	if (block) {
 		g_free_list = block->next;
+		//g_stat.alloc_count++;
+		//g_stat.use_block_num++;
+	}
 	light_unlock(&g_lock);
 
 	if (!block) return NULL;
@@ -188,6 +191,8 @@ static int release(void *ptr)
 	block->tag2 = BLOCK_TAG_2;
 	block->next = g_free_list;
 	g_free_list = block;
+	//g_stat.release_count++;
+	//g_stat.use_block_num--;
 	light_unlock(&g_lock);
 	
 	return 0;
@@ -200,11 +205,21 @@ static void* locate(void *ptr)
 	return PTR_HEAD(ptr);
 }
 
+static void get_stat(struct coro_mm_stat *stat)
+{
+	stat->alloc_count = g_stat.alloc_count;
+	stat->release_count = g_stat.release_count;
+	stat->use_block_num = g_stat.use_block_num;
+	assert(g_pool_blocks >= g_stat.use_block_num);
+	stat->free_block_num = g_pool_blocks - g_stat.use_block_num;
+}
+
 static struct coro_mm_ops g_ops = {
 	.init = init,
 	.alloc = alloc,
 	.release = release,
-	.locate = locate
+	.locate = locate,
+	.get_stat = get_stat
 };
 
 struct coro_mm_ops *coro_mm_pool_ops = &g_ops;

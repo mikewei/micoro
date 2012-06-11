@@ -33,19 +33,22 @@ static inline void light_lock(light_lock_t *lock)
 	 * ~16ns if no spin
 	 */
 	__asm__ __volatile__ (
-			"\n1:\t"
+			"\n1:\t" );
+
+	__asm__ __volatile__ (
+			"\n2:\t"
 			"lock ; "
 			"decl %0\n\t"
-			"jns 4f\n"
-			"2:\t"
+			"jns 5f\n"
+			"3:\t"
 			"rep;nop\n\t"
 			"incl %1\n\t"
 			"cmpl $5000,%1\n\t" /* ~ 3us */
-			"jae 3f\n\t"
+			"jae 4f\n\t"
 			"cmpl $0,%0\n\t"
-			"jle 2b\n\t"
-			"jmp 1b\n"
-			"3:\n\t"
+			"jle 3b\n\t"
+			"jmp 2b\n"
+			"4:\n\t"
 			:"=m"(lock->val)
 			:"r"(0)
 			:"memory" );
@@ -58,7 +61,7 @@ static inline void light_lock(light_lock_t *lock)
 	}
 	__asm__ __volatile__ (
 			"jmp 1b\n"
-			"4:\n\t");
+			"5:\n\t");
 }
 
 static inline void light_unlock(light_lock_t *lock)
