@@ -35,11 +35,12 @@ static inline int check_ctx(struct coro_ctx *ctx, int prev, int next)
 	return 1;
 }
 
-static inline void check_ctx_or_die(struct coro_ctx *ctx, int prev, int next)
+static inline void check_ctx_or_die(struct coro_ctx *ctx, 
+		int prev, int next, const char *str)
 {
 	if (!check_ctx(ctx, prev, next)) {
 		// bug found
-		fprintf(stderr, "bad coro ctx!\n");
+		fprintf(stderr, "%s\n", str);
 		abort();
 	}
 }
@@ -50,13 +51,10 @@ void* coro_resume(coro_t *coro, void *arg)
 	struct coro_ctx *cur, *to = coro->ctx;
 
 	/* use a old/wild coro ? */
-	if (!check_ctx(to, 0, 0)) {
-		coro->ctx = NULL;
-		return NULL;
-	}
+	check_ctx_or_die(to, 0, 0, "resuming bad coro (1)");
 
 	if ((cur = g_mm_ops->locate(&arg))) {
-		check_ctx_or_die(cur, 1, 0);
+		check_ctx_or_die(cur, 1, 0, "resuming from bad coro");
 	}	
 	else {
 		memset(&main_ctx, 0, sizeof(struct coro_ctx));
@@ -68,8 +66,8 @@ void* coro_resume(coro_t *coro, void *arg)
 
 	/* resumed a dying coro ? */
 	if (to->tag != CORO_CTX_TAG) {
-		coro->ctx = NULL;
-		return NULL;
+		fprintf(stderr, "resuming bad coro (2)!\n");
+		abort();
 	}
 	cur->next = to;
 	to->prev = cur;
@@ -96,8 +94,8 @@ static void* do_coro_yield(void *arg, unsigned int flag)
 	struct coro_ctx *to, *cur = NULL;
 
 	cur = g_mm_ops->locate(&arg);
-	check_ctx_or_die(cur, 1, 0);
-	check_ctx_or_die(cur->prev, -1, 1);
+	check_ctx_or_die(cur, 1, 0, "yielding from bad coro");
+	check_ctx_or_die(cur->prev, -1, 1, "yielding to bad coro");
 	to = cur->prev;
 	cur->prev = NULL;
 	to->next = NULL;
@@ -120,7 +118,7 @@ static void coro_main(void* (*f)(void*))
 	void *arg, *ret;
 
 	cur = g_mm_ops->locate(&arg);
-	check_ctx_or_die(cur, 1, 0);
+	check_ctx_or_die(cur, 1, 0, "coro_main found bad coro");
 	arg = cur->ret;
 	ret = f(arg);
 	do_coro_yield(ret, CORO_FLAG_END);
