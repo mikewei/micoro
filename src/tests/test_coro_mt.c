@@ -6,6 +6,8 @@
 #include "coroutine.h"
 #include "mt_utils.h"
 
+#define LOOP 100
+
 struct wait_list {
 	struct wait_list *next;
 	coro_t coro;
@@ -19,6 +21,7 @@ void* coro_func(void *arg)
 	struct wait_list wl;
 
 	assert(coro_self(&wl.coro) == 0);
+	assert(wl.coro.ctx != NULL);
 
 	light_lock(&g_lock);
 	wl.next = g_wait_list;
@@ -44,6 +47,8 @@ void* worker(void *arg)
 
 		if (wl)
 			coro_resume(&wl->coro, NULL);
+		else
+			usleep(1000);
 	}
 	return NULL;
 }
@@ -53,8 +58,11 @@ void* launcher(void *arg)
 	coro_t coro;
 
 	while (1) {
-		assert(coro_create(&coro, coro_func) == 0);
-		coro_resume(&coro, NULL);
+		int i;
+		for (i = 0; i < LOOP; i++) {
+			assert(coro_create(&coro, coro_func) == 0);
+			coro_resume(&coro, NULL);
+		}
 		usleep(1000);
 	}
 	return NULL;

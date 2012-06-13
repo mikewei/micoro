@@ -50,8 +50,8 @@ void* coro_resume(coro_t *coro, void *arg)
 	struct coro_ctx main_ctx;
 	struct coro_ctx *cur, *to = coro->ctx;
 
-	/* use a old/wild coro ? */
-	check_ctx_or_die(to, 0, 0, "resuming bad coro (1)");
+	/* using a old/wild coro ? */
+	check_ctx_or_die(to, -1, -1, "resuming bad coro (1)");
 
 	if ((cur = g_mm_ops->locate(&arg))) {
 		check_ctx_or_die(cur, 1, 0, "resuming from bad coro");
@@ -64,11 +64,9 @@ void* coro_resume(coro_t *coro, void *arg)
 
 	light_lock(&to->lock);
 
-	/* resumed a dying coro ? */
-	if (to->tag != CORO_CTX_TAG) {
-		fprintf(stderr, "resuming bad coro (2)!\n");
-		abort();
-	}
+	/* using a dying coro ? */
+	check_ctx_or_die(to, 0, 0, "resuming bad coro (2)");
+
 	cur->next = to;
 	to->prev = cur;
 	to->ret = arg;
@@ -80,8 +78,9 @@ void* coro_resume(coro_t *coro, void *arg)
 		memset(to, 0, sizeof(struct coro_ctx));
 		/* give a chance to avoid dead-locking */
 		light_unlock(&to->lock);
-		g_mm_ops->release(to);
+		/* must before release because coro maybe in the stack */
 		coro->ctx = NULL;
+		g_mm_ops->release(to);
 	} else {
 		light_unlock(&to->lock);
 	}
