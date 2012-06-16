@@ -1,11 +1,11 @@
 #include <time.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "coroutine.h"
+#include "micoro.h"
 
 #define _assert
 
-#define N (100000)
+#define N (10000)
 static coro_t tab[N];
 static size_t cur = 0;
 

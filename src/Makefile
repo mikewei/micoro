@@ -1,4 +1,4 @@
-LIB = libcoro.a
+LIB = libmicoro.a
 SRC = $(wildcard *.c)
 OBJ = $(SRC:.c=.o)
 CFLAGS = -g -Wall -MMD -O2 $(ARCH)
@@ -33,4 +33,9 @@ clean:
 	rm -f $(LIB) $(BIN) *.o *.d
 	make -C tests clean
 
-.PHONY: all clean libs libs32 tests tests32
+install: all
+	cp -a micoro.h /usr/local/include/
+	cp -a $(LIB) /usr/local/lib/
+
+.PHONY: all install clean libs libs32 tests tests32
+

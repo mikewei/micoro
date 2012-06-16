@@ -1,9 +1,9 @@
 TEST_BIN = testcase test_coro_mt
 PERF_BIN = $(patsubst %_perf.c, %_perf, $(wildcard *_perf.c))
 BIN = $(TEST_BIN) $(PERF_BIN)
-CORO_LIB = ../libcoro.a
+CORO_LIB = ../libmicoro.a
 CFLAGS = -Wall -MMD $(ARCH)
-INCLIBS = -I.. -L.. -lcoro -lpthread
+INCLIBS = -I.. -L.. -lmicoro -pthread
 LIB_TARGET = libs
 
 all: $(BIN)

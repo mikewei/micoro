@@ -2,7 +2,7 @@
 #define __CORO_COMM_H__
 
 #include <stdlib.h>
-#include "coroutine.h"
+#include "micoro.h"
 #include "mt_utils.h"
 
 #define CORO_FLAG_END 0x00000001

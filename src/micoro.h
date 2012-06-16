@@ -3,11 +3,15 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include "coro_inc.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct coro_ctx;
+typedef struct {
+	struct coro_ctx *ctx;
+} coro_t;
 
 int coro_init(size_t ctx_size, size_t pool_size);
 
@@ -19,7 +23,10 @@ void* coro_yield(void *arg);
 
 int coro_self(coro_t *coro);
 
-int coro_err(const coro_t *coro);
+static inline int coro_err(const coro_t *coro)
+{
+	return (!coro || !coro->ctx);
+}
 
 struct coro_stat
 {
