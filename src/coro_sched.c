@@ -159,8 +159,10 @@ int coro_create(coro_t *coro, void* (*f)(void*))
 	struct coro_ctx *ctx;
 	unsigned long *stack;
 
-	if (!coro || !f)
-		return -1;
+	if (!g_init_flag) {
+		fprintf(stderr, "bug! coro_create without coro_init! abort\n");
+		abort();
+	}
 	coro->ctx = NULL;
 
 	if (!(ctx = g_mm_ops->alloc()))
