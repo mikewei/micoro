@@ -6,7 +6,7 @@
 #include "micoro.h"
 #include "mt_utils.h"
 
-#define LOOP 100
+#define LOOP 1000
 
 struct wait_list {
 	struct wait_list *next;
