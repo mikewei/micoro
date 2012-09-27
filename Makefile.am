@@ -4,5 +4,6 @@ SUBDIRS = src test
 
 EXTRA_DIST = \
 	cleanup.sh \
-	COPYING
+	COPYING \
+	ChangeLog
 
