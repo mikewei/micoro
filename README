@@ -1,1 +1,46 @@
-micoro
+1. Introduction
+
+   micoro (for MIcro COROutine & MIke's COROtine) is a light weight, high
+performance coroutine implementation.
+   The basic idea of micoro come from the paper "Revisiting Coroutines"
+(http://www.inf.puc-rio.br/~roberto/docs/MCC15-04.pdf). As the paper proved,
+the "full asymmetric coroutine" model is powerful, easier to use and 
+expressive power equivalent to other similar models. So micoro is actually
+a "full asymmetric coroutine" implemenation with simple API and clear 
+semantics.
+   The original motivation of micoro is to implement a light-weight 
+cooperative multitasking infrastructure for server environment, so simple, 
+performance and robust (rather than portability) is often the top 
+considerations across disign. 
+
+
+2. Requirement
+
+   currently only x86 system is supported, and
+   only GCC compatible compiler is supported.
+
+
+3. Install
+
+3.1 install from git source
+    
+   git clone http://xxx/micoro.git
+   cd micoro
+   autoreconf -i
+   ./configure
+   make
+   sudo make install
+
+3.2 install from tarball
+
+   tar -xvf micoro-1.0.0.tar.gz
+   cd micoro-1.0.0
+   ./configure
+   make
+   sudo make install
+
+
+4. Bug report
+
+   please email to <bin@vip.qq.com>
+
