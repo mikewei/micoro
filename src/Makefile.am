@@ -5,9 +5,11 @@ endif
 include_HEADERS = \
 	micoro.h
 
-lib_LTLIBRARIES = libmicoro.la
+lib_LTLIBRARIES = \
+	libmicoro.la \
+	libmicoro_mt.la
 
-libmicoro_la_SOURCES = \
+libmicoro_SOURCES = \
 	coro_comm.h \
 	coro_mm.h \
 	coro_mm_malloc.c \
@@ -17,8 +19,14 @@ libmicoro_la_SOURCES = \
 	mt_utils.c \
 	mt_utils.h
 
+libmicoro_la_SOURCES = $(libmicoro_SOURCES)
 libmicoro_la_LIBADD = libtmp.la
 libmicoro_la_LDFLAGS = -static
+
+libmicoro_mt_la_SOURCES = $(libmicoro_SOURCES)
+libmicoro_mt_la_CPPFLAGS = -DMICORO_MT
+libmicoro_mt_la_LIBADD = libtmp.la
+libmicoro_mt_la_LDFLAGS = -static
 
 noinst_LTLIBRARIES = libtmp.la
 

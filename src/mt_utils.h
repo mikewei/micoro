@@ -39,13 +39,30 @@
 	typedef char _impl_PASTE(assertion_failed_line_,line)[2*!!(predicate)-1];
 
 
-static inline void atom_swap32(uint32_t *target, uint32_t *value)
+#ifdef MICORO_MT
+#	define ATOM_SWAP32 xchg_swap32
+#	define LIGHT_LOCK light_lock
+#	define LIGHT_UNLOCK light_unlock
+#else
+#   define ATOM_SWAP32 simple_swap32
+#	define LIGHT_LOCK(lock) do { (void)(lock); } while (0)
+#	define LIGHT_UNLOCK(lock) do { (void)(lock); } while (0)
+#endif
+
+static inline void xchg_swap32(uint32_t *target, uint32_t *value)
 {
 	__asm__ __volatile__ (
 			"xchgl %0, %1"
 			:"=r"(*value)
 			:"m"(*target), "0"(*value)
 			:"memory" );
+}
+
+static inline void simple_swap32(uint32_t *target, uint32_t *value)
+{
+	uint32_t tmp = *target;
+	*target = *value;
+	*value = tmp;
 }
 
 typedef struct {
