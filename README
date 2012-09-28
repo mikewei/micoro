@@ -11,13 +11,27 @@ semantics.
    The original motivation of micoro is to implement a light-weight 
 cooperative multitasking infrastructure for server environment, so simple, 
 performance and robust (rather than portability) is often the top 
-considerations across disign. 
+considerations across disign and implementation. 
+
+   some features:
+   * x86 user space fast context switch
+   * x86 user level light-weight lock
+   * thread-safe operations
+   * stack overflow detection
+   * robust code with careful design and test
 
 
 2. Requirement
 
-   currently only x86 system is supported, and
+   Currently only x86 system is supported, and
    only GCC compatible compiler is supported.
+
+   Some tested platform:
+     Linux-2.6.16 x86_32
+	 Linux-2.6.32 x86_64
+	 Linux-3.2    x86_64 GCC-4.7.1
+	 MacOS-11.4.2 x86_64 LLVM-GCC-4.2.1
+	 FreeBSD-9.0  x86_64 GCC-4.2.1
 
 
 3. Install
