@@ -8,21 +8,35 @@ AC_CONFIG_SRCDIR([src/micoro.h])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
+AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+LT_INIT
+
+AC_ARG_ENABLE([cpu-limit],
+			  [AS_HELP_STRING([--disable-cpu-limit],
+							  [do not limit cpu arch to x86])],
+			  [],
+			  [enable_cpu_limit=yes])
+AC_ARG_ENABLE([gcc-limit],
+			  [AS_HELP_STRING([--disable-gcc-limit],
+							  [do not limit compiler to gcc])],
+			  [],
+			  [enable_gcc_limit=yes])
+
+# Check for cpu.
 AC_CANONICAL_HOST
 AS_CASE(["$host_cpu"], 
 		[x86_64], [],
 		[i?86], []
-		[AC_MSG_ERROR([only support x86 now!])])
-
-AM_INIT_AUTOMAKE([foreign -Wall -Werror])
-LT_INIT
+		[i?86-*], []
+		[AS_IF([test "x$enable_cpu_limit" = xyes],
+			   [AC_MSG_ERROR([only support x86 now, use --disable-cpu-limit to force build!])])])
 
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_CC_C_O
-AM_CONDITIONAL(GCC, test "$GCC" = yes)
-AS_IF([test "x$GCC" = xyes], []
-	  [AC_MSG_WARN([***** non-gcc is not tested, maybe fail when compiling! *****])])
+AM_CONDITIONAL(GCC, test "x$GCC" = xyes)
+AS_IF([test "x$GCC" != xyes -a "x$enable_gcc_limit" = xyes],
+	  [AC_MSG_ERROR([build without gcc is not tested, use --disable-gcc-limit to force build!])])
 
 AC_SUBST([AM_CFLAGS], ["$CFLAGS"])
 CFLAGS=""
