@@ -38,7 +38,6 @@
 #endif
 
 void prepare() __attribute__((weak));
-void done() __attribute__((weak));
 void testcase();
 
 static unsigned long long count;
@@ -67,8 +66,6 @@ int main(int argc, char *argv[])
 	gettimeofday(&tv_end, NULL);
 
 	timersub(&tv_end, &tv_begin, &tv_use);
-
-	if (done) done();
 
 	printf("count: %'llu\n", count);
 	printf(" time: %'d.%06d s\n", (int)tv_use.tv_sec, (int)tv_use.tv_usec);
