@@ -169,10 +169,16 @@ int coro_create(coro_t *coro, void* (*f)(void*))
 		return -1;
 
 	stack = (void *)ctx + g_ctx_size - sizeof(unsigned long);
+	/* now stack point to the last word of the context space */
 	*stack = 0UL;
-	stack = (void *)((unsigned long)stack & ~(sizeof(unsigned long) - 1));
+
+	/* make stack-frame of coro_main 16-byte aligned
+	 * some systems (such as Mac OS) require this
+	 */
+	stack = (void *)((unsigned long)stack & ~0x0fUL);
 
 	stack[0] = (unsigned long)f;
+	/* here is 16-byte alignment boundary */
 	stack[-1] = 0UL; // IP
 	stack[-2] = (unsigned long)coro_main;
 	stack[-3] = 0UL; // BP
