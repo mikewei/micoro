@@ -151,6 +151,9 @@ static int init(size_t *alloc_size, size_t pool_size)
 		return -1;
 	g_pool_pages = g_block_pages * g_pool_blocks + guard_pages(g_pool_blocks);
 
+#ifndef MAP_ANONYMOUS
+#	define MAP_ANONYMOUS MAP_ANON
+#endif
 	g_pool_addr = mmap(NULL, (g_pool_pages << PAGE_SHIFT), PROT_READ|PROT_WRITE,
 			MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 	if (g_pool_addr == MAP_FAILED) {
