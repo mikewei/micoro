@@ -19,6 +19,7 @@ considerations across disign and implementation.
    * thread-safe operations
    * stack overflow detection
    * robust code with careful design and test
+   * portable for non-x86 using ucontext
 
 
 2. Requirement
@@ -27,11 +28,12 @@ considerations across disign and implementation.
    only GCC compatible compiler is supported.
 
    Some tested platform:
-     Linux-2.6.16 x86_32
-	 Linux-2.6.32 x86_64
-	 Linux-3.2    x86_64 GCC-4.7.1
-	 MacOS-11.4.2 x86_64 LLVM-GCC-4.2.1
-	 FreeBSD-9.0  x86_64 GCC-4.2.1
+     Linux-2.6.16  x86_32
+	 Linux-2.6.32  x86_64
+	 Linux-3.2     x86_64  GCC-4.7.1
+	 MacOS-10.7.4  x86_64  LLVM-GCC-4.2.1
+	 FreeBSD-9.0   x86_64  GCC-4.2.1
+	 Cygwin_NT-6.1   i686  GCC-4.5.3
 
 
 3. Install
@@ -54,7 +56,21 @@ considerations across disign and implementation.
    sudo make install
 
 
-4. Bug report
+4. Performance
+
+   micoro has much higher performance compared with others
+   (e.g. GNU Pth, PCL, pthread ...)
+
+   * my benchmark with a Linux-3.2 CoreDuo 2.1G PC
+   context switch performance for 10000 concurrent routines:
+
+   GNU Pth -     5,876 switches per second
+   pthread -   237,318 switches per second
+       PCL -   879,165 switches per second
+	micoro - 4,577,256 switches per second
+
+
+5. Bug report
 
    please email to <bin@vip.qq.com>
 
