@@ -30,7 +30,7 @@ AC_ARG_ENABLE([force-gcc],
 # Check for cpu.
 AC_CANONICAL_HOST
 AS_CASE(["$host_cpu"], 
-		[x86_6], [arch_type=x86],
+		[x86_64], [arch_type=x86],
 		[i?86], [arch_type=x86],
 		[i?86-*], [arch_type=x86],
 		[arch_type=other]])
