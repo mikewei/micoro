@@ -20,6 +20,7 @@ considerations across disign and implementation.
    * stack overflow detection
    * robust code with careful design and test
    * portable for non-x86 using ucontext
+   * running activity statistics
 
 
 2. Requirement
