@@ -32,7 +32,11 @@
 
 #include <config.h>
 #if !MICORO_X86_OPTIMIZE
-#	include <ucontext.h>
+#	if HAVE_UCONTEXT_H
+#		include <ucontext.h>
+#	elif HAVE_SYS_UCONTEXT_H
+#		include <sys/ucontext.h>
+#	endif
 #endif
 #include <stdlib.h>
 #include "micoro.h"

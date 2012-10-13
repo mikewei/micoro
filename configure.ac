@@ -54,7 +54,8 @@ AS_IF([test "x$enable_x86_optimize" = xyes],
 # Checks for libraries.
 
 # Checks for header files.
-AC_CHECK_HEADERS([locale.h stdint.h stdlib.h string.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([locale.h stdint.h stdlib.h string.h sys/time.h unistd.h \
+		sys/mman.h ucontext.h sys/ucontext.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -65,7 +66,10 @@ AC_TYPE_UINT64_T
 # Checks for library functions.
 AC_FUNC_MALLOC
 AC_FUNC_MMAP
-AC_CHECK_FUNCS([alarm gettimeofday memset munmap setlocale])
+AC_CHECK_FUNCS([alarm gettimeofday memset munmap setlocale mprotect])
+
+# Custom checks
+AX_GOOD_MPROTECT
 
 AH_TOP([
 #ifndef __MICORO_CONFIG_H__

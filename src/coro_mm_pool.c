@@ -27,6 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <config.h>
 #include <sys/mman.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -101,8 +102,10 @@ static int do_init_pool()
 
 		/* insert guard page */
 		if (blk == guard) {
+#if HAVE_GOOD_MPROTECT
 			if (mprotect(cur, PAGE_SIZE, PROT_NONE) < 0)
 				return -1;
+#endif
 			/* page_no 0 means NULL */
 			g_page_map[PAGE_NO(cur)].head_page = 0;
 
@@ -128,8 +131,10 @@ static int do_init_pool()
 		cur = (void *)cur + (g_block_pages << PAGE_SHIFT);
 	}
 	/* end by a guard-page */
+#if HAVE_GOOD_MPROTECT
 	if (mprotect(cur, PAGE_SIZE, PROT_NONE) < 0)
 		return -1;
+#endif
 	g_page_map[PAGE_NO(cur)].head_page = 0;
 	cur = (void *)cur + PAGE_SIZE;
 	/* last check */
