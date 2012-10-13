@@ -15,7 +15,6 @@ libperf_main_la_SOURCES = perf_main.c
 libperf_main_la_LDFLAGS = -static
 
 noinst_PROGRAMS = \
-	asm_lock_perf \
 	coro_cr_perf \
 	coro_cr_mt_perf \
 	coro_sw_perf \
@@ -26,7 +25,11 @@ noinst_PROGRAMS = \
 	testcase \
 	test_coro_mt
 
+if MICORO_X86_OPTIMIZE
+noinst_PROGRAMS += asm_lock_perf
 asm_lock_perf_SOURCES = asm_lock_perf.c
+endif
+
 coro_cr_perf_SOURCES = coro_cr_perf.c
 coro_sw_perf_SOURCES = coro_sw_perf.c
 lock_perf_SOURCES = lock_perf.c

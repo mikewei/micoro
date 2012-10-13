@@ -7,16 +7,16 @@
 //#define MT
 #define YIELD
 
-static light_lock_t lock = LIGHT_LOCK_INIT;
+static MICORO_LOCK_T lock = MICORO_LOCK_INITVAL;
 static unsigned long count;
 
 void testcase2()
 {
-	light_lock(&lock);
+	MICORO_LOCK(&lock);
 #ifdef YIELD
 	sched_yield();
 #endif
-	light_unlock(&lock);
+	MICORO_UNLOCK(&lock);
 	count++;
 }
 
@@ -43,6 +43,6 @@ void prepare()
 
 void testcase()
 {
-	light_lock(&lock);
-	light_unlock(&lock);
+	MICORO_LOCK(&lock);
+	MICORO_UNLOCK(&lock);
 }

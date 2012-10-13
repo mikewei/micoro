@@ -33,11 +33,11 @@ int init_once(int *init_flag)
 {
 	int flag;
 
-	static light_lock_t init_lock = LIGHT_LOCK_INIT;
-	LIGHT_LOCK(&init_lock);
+	static MICORO_LOCK_T init_lock = MICORO_LOCK_INITVAL;
+	MICORO_LOCK(&init_lock);
 	flag = *init_flag;
 	*init_flag = 1;
-	LIGHT_UNLOCK(&init_lock);
+	MICORO_UNLOCK(&init_lock);
 
 	return (flag ? -1 : 0);
 }

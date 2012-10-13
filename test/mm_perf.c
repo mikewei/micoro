@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "coro_comm.h"
 #include "coro_mm.h"
 
 //#define USE_MALLOC

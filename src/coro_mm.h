@@ -30,6 +30,7 @@
 #ifndef __CORO_MM_H__
 #define __CORO_MM_H__
 
+#include <config.h>
 #include <stdint.h>
 
 struct coro_mm_stat

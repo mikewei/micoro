@@ -6,7 +6,7 @@
 #include "micoro.h"
 #include "mt_utils.h"
 
-#define LOOP 1000
+#define LOOP 100
 
 struct wait_list {
 	struct wait_list *next;
@@ -14,7 +14,7 @@ struct wait_list {
 };
 
 static struct wait_list * volatile g_wait_list;
-static light_lock_t g_lock = LIGHT_LOCK_INIT;
+static MICORO_LOCK_T g_lock = MICORO_LOCK_INITVAL;
 
 void* coro_func(void *arg)
 {
@@ -23,10 +23,10 @@ void* coro_func(void *arg)
 	assert(coro_self(&wl.coro) == 0);
 	assert(wl.coro.ctx != NULL);
 
-	light_lock(&g_lock);
+	MICORO_LOCK(&g_lock);
 	wl.next = g_wait_list;
 	g_wait_list = &wl;
-	light_unlock(&g_lock);
+	MICORO_UNLOCK(&g_lock);
 
 	coro_yield(NULL);
 
@@ -38,12 +38,12 @@ void* worker(void *arg)
 	while (1) {
 		struct wait_list *wl = NULL;
 
-		light_lock(&g_lock);
+		MICORO_LOCK(&g_lock);
 		if (g_wait_list) {
 			wl = g_wait_list;
 			g_wait_list = g_wait_list->next;
 		}
-		light_unlock(&g_lock);
+		MICORO_UNLOCK(&g_lock);
 
 		if (wl)
 			coro_resume(&wl->coro, NULL);

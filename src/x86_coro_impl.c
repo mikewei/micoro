@@ -29,49 +29,36 @@
  */
 #include "coro_comm.h"
 
-/*
- * stack layout should NOT be optimized (use -O0)
- */
-void coro_switch(struct coro_ctx *from, struct coro_ctx *to)
+void x86_coro_makectx(struct coro_ctx *ctx, size_t ctx_size, void* (*f)(void*))
 {
-	asm volatile (
-#ifdef __x86_64__
-			/*
-			 * callee-saved register: RBX,RBP,R12~R15
-			 * use RDI to pass param for coro_main
-			 */
-			"pushq %%rbx\n\t"
-			"pushq %%rbp\n\t"
-			"pushq %%rdi\n\t"
-			"pushq %%r12\n\t"
-			"pushq %%r13\n\t"
-			"pushq %%r14\n\t"
-			"pushq %%r15\n\t"
-			"movq %%rsp, %0\n\t"
-			"movq %1, %%rsp\n\t"
-			"popq %%r15\n\t"
-			"popq %%r14\n\t"
-			"popq %%r13\n\t"
-			"popq %%r12\n\t"
-			"popq %%rdi\n\t"
-			"popq %%rbp\n\t"
-			"popq %%rbx\n\t"
-#else
-			/*
-			 * callee-saved register: EBX,EBP,ESI,EDI
-			 */
-			"pushl %%ebx\n\t"
-			"pushl %%ebp\n\t"
-			"pushl %%edi\n\t"
-			"pushl %%esi\n\t"
-			"movl %%esp, %0\n\t"
-			"movl %1, %%esp\n\t"
-			"popl %%esi\n\t"
-			"popl %%edi\n\t"
-			"popl %%ebp\n\t"
-			"popl %%ebx\n\t"
-#endif
-			:
-			: "m"(from->sp), "r"(to->sp));
-}
+	unsigned long *stack;
 
+	stack = (void *)ctx + ctx_size - sizeof(unsigned long);
+	/* now stack point to the last word of the context space */
+	*stack = 0UL;
+
+	/* make stack-frame of coro_main 16-byte aligned
+	 * for amd64-ABI and some systems (such as Mac OS) require this
+	 */
+	stack = (void *)((unsigned long)stack & ~0x0fUL);
+
+	stack[0] = (unsigned long)f;
+	/* here is 16-byte alignment boundary */
+	stack[-1] = 0UL; // IP
+	stack[-2] = (unsigned long)__coro_main;
+	stack[-3] = 0UL; // BP
+	stack[-4] = 0UL; // BX
+	stack[-5] = (unsigned long)&stack[-3]; // BP
+	stack[-6] = stack[0]; // DI
+#ifdef __x86_64__
+	stack[-7] = 0UL; // R12
+	stack[-8] = 0UL; // R13
+	stack[-9] = 0UL; // R14
+	stack[-10] = 0UL; // R15
+#	define _stack_top (-10)
+#else
+	stack[-7] = 0UL; // SI
+#	define _stack_top (-7)
+#endif
+	ctx->sp = &stack[_stack_top];
+}

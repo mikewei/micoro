@@ -27,49 +27,69 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __CORO_COMM_H__
-#define __CORO_COMM_H__
+#ifndef __X86_MT_UTILS_H__
+#define __X86_MT_UTILS_H__
 
-#include <config.h>
-#if !MICORO_X86_OPTIMIZE
-#	include <ucontext.h>
-#endif
-#include <stdlib.h>
-#include "micoro.h"
-#include "mt_utils.h"
-
-#define CORO_FLAG_END 0x00000001
-
-#define CORO_CTX_TAG 0x9988abcd
-
-struct coro_ctx
+static inline void xchg_swap32(uint32_t *target, uint32_t *value)
 {
-#if MICORO_X86_OPTIMIZE
-	void *sp;
-#else
-	ucontext_t uctx;
+	__asm__ __volatile__ (
+			"xchgl %0, %1"
+			:"=r"(*value)
+			:"m"(*target), "0"(*value)
+			:"memory" );
+}
+
+typedef struct {
+	volatile int val;
+} light_lock_t;
+
+#define LIGHT_LOCK_INIT {1}
+#define light_lock_init light_unlock
+
+static inline void light_lock(light_lock_t *lock)
+{
+	/* fast spin
+	 * borrowed from kernel-2.6.16
+	 * ~16ns if no spin
+	 */
+	__asm__ __volatile__ (
+			"\n1:\t" );
+
+	__asm__ __volatile__ (
+			"\n2:\t"
+			"lock ; "
+			"decl %0\n\t"
+			"jns 5f\n"
+			"3:\t"
+			"rep;nop\n\t"
+			"incl %1\n\t"
+			"cmpl $5000,%1\n\t" /* ~ 3us */
+			"jae 4f\n\t"
+			"cmpl $0,%0\n\t"
+			"jle 3b\n\t"
+			"jmp 2b\n"
+			"4:\n\t"
+			:"=m"(lock->val)
+			:"r"(0)
+			:"memory" );
+	/* slow spin
+	 * if the lock-owner-thread is SUSPENDED busywait is meaningless
+	 * sched_yield may help or less harmful
+	 */
+	while (lock->val <= 0) {
+		sched_yield();
+	}
+	__asm__ __volatile__ (
+			"jmp 1b\n"
+			"5:\n\t");
+}
+
+static inline void light_unlock(light_lock_t *lock)
+{
+	__asm__ __volatile__ (
+			"movl $1,%0"
+			:"=m"(lock->val)
+			: :"memory" );
+}
+
 #endif
-	struct coro_ctx *prev;
-	struct coro_ctx *next;
-	void *ret;
-	MICORO_LOCK_T lock;
-	unsigned int flag;
-	unsigned int tag;
-};
-
-#if MICORO_X86_OPTIMIZE
-#	define coro_switch x86_coro_switch
-#	define coro_makectx x86_coro_makectx
-#else
-#	define coro_switch uctx_coro_switch
-#	define coro_makectx uctx_coro_makectx
-#endif
-
-void coro_makectx(struct coro_ctx *ctx, size_t ctx_size, void* (*f)(void*));
-void coro_switch(struct coro_ctx *from, struct coro_ctx *to)
-	__attribute__ ((noinline, regparm(0)));
-
-void __coro_main(void* (*f)(void*))
-	__attribute__ ((noinline, regparm(0)));
-
-#endif // __CORO_COMM_H__

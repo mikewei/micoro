@@ -27,49 +27,37 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __CORO_COMM_H__
-#define __CORO_COMM_H__
-
-#include <config.h>
-#if !MICORO_X86_OPTIMIZE
-#	include <ucontext.h>
-#endif
 #include <stdlib.h>
-#include "micoro.h"
-#include "mt_utils.h"
+#include <stdio.h>
+#include "coro_comm.h"
 
-#define CORO_FLAG_END 0x00000001
-
-#define CORO_CTX_TAG 0x9988abcd
-
-struct coro_ctx
+static void uctx_coro_main(int arg1, int arg2)
 {
-#if MICORO_X86_OPTIMIZE
-	void *sp;
-#else
-	ucontext_t uctx;
-#endif
-	struct coro_ctx *prev;
-	struct coro_ctx *next;
-	void *ret;
-	MICORO_LOCK_T lock;
-	unsigned int flag;
-	unsigned int tag;
-};
+	__coro_main((void*(*)(void*))(
+				((uintptr_t)(unsigned int)arg1) + 
+				((uintptr_t)(unsigned int)arg2 << (sizeof(int)*8))
+				));
+}
 
-#if MICORO_X86_OPTIMIZE
-#	define coro_switch x86_coro_switch
-#	define coro_makectx x86_coro_makectx
-#else
-#	define coro_switch uctx_coro_switch
-#	define coro_makectx uctx_coro_makectx
-#endif
+void uctx_coro_makectx(struct coro_ctx *ctx, size_t ctx_size, void* (*f)(void*))
+{
+	if (getcontext(&ctx->uctx) < 0) {
+		perror("getcontext");
+		abort();
+	}
+	ctx->uctx.uc_stack.ss_sp = (void *)ctx + sizeof(struct coro_ctx);
+	ctx->uctx.uc_stack.ss_size = ctx_size - sizeof(struct coro_ctx);
+	ctx->uctx.uc_link = NULL;
+	/* according to makecontext(3), to be portable we must pass pointer 
+	   by a pair of int args */
+	makecontext(&ctx->uctx, (void(*)())uctx_coro_main, 2, 
+			(int)f, (int)((uintptr_t)f >> (sizeof(int)*8)));
+}
 
-void coro_makectx(struct coro_ctx *ctx, size_t ctx_size, void* (*f)(void*));
-void coro_switch(struct coro_ctx *from, struct coro_ctx *to)
-	__attribute__ ((noinline, regparm(0)));
-
-void __coro_main(void* (*f)(void*))
-	__attribute__ ((noinline, regparm(0)));
-
-#endif // __CORO_COMM_H__
+void uctx_coro_switch(struct coro_ctx *from, struct coro_ctx *to)
+{
+	if (swapcontext(&from->uctx, &to->uctx) < 0) {
+		perror("swapcontext");
+		abort();
+	}
+}

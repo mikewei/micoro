@@ -27,49 +27,53 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __CORO_COMM_H__
-#define __CORO_COMM_H__
+#include "coro_comm.h"
 
-#include <config.h>
-#if !MICORO_X86_OPTIMIZE
-#	include <ucontext.h>
-#endif
-#include <stdlib.h>
-#include "micoro.h"
-#include "mt_utils.h"
-
-#define CORO_FLAG_END 0x00000001
-
-#define CORO_CTX_TAG 0x9988abcd
-
-struct coro_ctx
+/*
+ * x86_coro_makectx assume a fixed stack layout, so here
+ * the code (e.g. save frame-pointer) should NOT be optimized (use -O0)
+ * maybed replace by pure asm code in the future
+ */
+void x86_coro_switch(struct coro_ctx *from, struct coro_ctx *to)
 {
-#if MICORO_X86_OPTIMIZE
-	void *sp;
+	asm volatile (
+#ifdef __x86_64__
+			/*
+			 * [amd64 ABI] callee-saved register: RBX,RBP,R12~R15
+			 * use RDI to pass param for coro_main
+			 */
+			"pushq %%rbx\n\t"
+			"pushq %%rbp\n\t"
+			"pushq %%rdi\n\t"
+			"pushq %%r12\n\t"
+			"pushq %%r13\n\t"
+			"pushq %%r14\n\t"
+			"pushq %%r15\n\t"
+			"movq %%rsp, %0\n\t"
+			"movq %1, %%rsp\n\t"
+			"popq %%r15\n\t"
+			"popq %%r14\n\t"
+			"popq %%r13\n\t"
+			"popq %%r12\n\t"
+			"popq %%rdi\n\t"
+			"popq %%rbp\n\t"
+			"popq %%rbx\n\t"
 #else
-	ucontext_t uctx;
+			/*
+			 * [i386 ABI] callee-saved register: EBX,EBP,ESI,EDI
+			 */
+			"pushl %%ebx\n\t"
+			"pushl %%ebp\n\t"
+			"pushl %%edi\n\t"
+			"pushl %%esi\n\t"
+			"movl %%esp, %0\n\t"
+			"movl %1, %%esp\n\t"
+			"popl %%esi\n\t"
+			"popl %%edi\n\t"
+			"popl %%ebp\n\t"
+			"popl %%ebx\n\t"
 #endif
-	struct coro_ctx *prev;
-	struct coro_ctx *next;
-	void *ret;
-	MICORO_LOCK_T lock;
-	unsigned int flag;
-	unsigned int tag;
-};
+			:
+			: "m"(from->sp), "r"(to->sp));
+}
 
-#if MICORO_X86_OPTIMIZE
-#	define coro_switch x86_coro_switch
-#	define coro_makectx x86_coro_makectx
-#else
-#	define coro_switch uctx_coro_switch
-#	define coro_makectx uctx_coro_makectx
-#endif
-
-void coro_makectx(struct coro_ctx *ctx, size_t ctx_size, void* (*f)(void*));
-void coro_switch(struct coro_ctx *from, struct coro_ctx *to)
-	__attribute__ ((noinline, regparm(0)));
-
-void __coro_main(void* (*f)(void*))
-	__attribute__ ((noinline, regparm(0)));
-
-#endif // __CORO_COMM_H__

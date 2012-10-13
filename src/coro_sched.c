@@ -27,6 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "coro_comm.h"
@@ -91,7 +92,7 @@ void* coro_resume(coro_t *coro, void *arg)
 		cur = &main_ctx;
 	}
 
-	LIGHT_LOCK(&to->lock);
+	MICORO_LOCK(&to->lock);
 
 	/* using a dying coro ? */
 	check_ctx_or_die(to, 0, 0, "resuming bad coro (2)");
@@ -106,12 +107,12 @@ void* coro_resume(coro_t *coro, void *arg)
 	if (to->flag & CORO_FLAG_END) {
 		memset(to, 0, sizeof(struct coro_ctx));
 		/* give a chance to avoid dead-locking */
-		LIGHT_UNLOCK(&to->lock);
+		MICORO_UNLOCK(&to->lock);
 		/* must before release because coro maybe in the stack */
 		coro->ctx = NULL;
 		g_mm_ops->release(to);
 	} else {
-		LIGHT_UNLOCK(&to->lock);
+		MICORO_UNLOCK(&to->lock);
 	}
 
 	return cur->ret;
@@ -139,8 +140,7 @@ void* coro_yield(void *arg)
 	return do_coro_yield(arg, 0);
 }
 
-__attribute__ ((noinline, regparm(0)))
-static void coro_main(void* (*f)(void*))
+void __coro_main(void* (*f)(void*))
 {
 	struct coro_ctx *cur;
 	void *arg, *ret;
@@ -151,13 +151,12 @@ static void coro_main(void* (*f)(void*))
 	ret = f(arg);
 	do_coro_yield(ret, CORO_FLAG_END);
 	fprintf(stderr, "bug! resume dead coro_main\n");
-	exit(1);
+	abort();
 }
 
 int coro_create(coro_t *coro, void* (*f)(void*))
 {
 	struct coro_ctx *ctx;
-	unsigned long *stack;
 
 	if (!g_init_flag) {
 		fprintf(stderr, "bug! coro_create without coro_init! abort\n");
@@ -167,38 +166,12 @@ int coro_create(coro_t *coro, void* (*f)(void*))
 
 	if (!(ctx = g_mm_ops->alloc()))
 		return -1;
-
-	stack = (void *)ctx + g_ctx_size - sizeof(unsigned long);
-	/* now stack point to the last word of the context space */
-	*stack = 0UL;
-
-	/* make stack-frame of coro_main 16-byte aligned
-	 * some systems (such as Mac OS) require this
-	 */
-	stack = (void *)((unsigned long)stack & ~0x0fUL);
-
-	stack[0] = (unsigned long)f;
-	/* here is 16-byte alignment boundary */
-	stack[-1] = 0UL; // IP
-	stack[-2] = (unsigned long)coro_main;
-	stack[-3] = 0UL; // BP
-	stack[-4] = 0UL; // BX
-	stack[-5] = (unsigned long)&stack[-3]; // BP
-	stack[-6] = stack[0]; // DI
-#ifdef __x86_64__
-	stack[-7] = 0UL; // R12
-	stack[-8] = 0UL; // R13
-	stack[-9] = 0UL; // R14
-	stack[-10] = 0UL; // R15
-#	define _stack_top (-10)
-#else
-	stack[-7] = 0UL; // SI
-#	define _stack_top (-7)
-#endif
 	memset(ctx, 0, sizeof(struct coro_ctx));
-	ctx->sp = &stack[_stack_top];
+
+	coro_makectx(ctx, g_ctx_size, f);
+
 	ctx->tag = CORO_CTX_TAG;
-	light_lock_init(&ctx->lock);
+	MICORO_LOCK_INIT(&ctx->lock);
 
 	coro->ctx = ctx;
 	return 0;

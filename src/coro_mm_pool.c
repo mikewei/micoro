@@ -62,7 +62,7 @@ static size_t g_pool_pages;
 static void *g_pool_addr;
 static struct page_info *g_page_map;
 static struct block_info * volatile g_free_list;
-static light_lock_t g_lock = LIGHT_LOCK_INIT;
+static MICORO_LOCK_T g_lock = MICORO_LOCK_INITVAL;
 static struct coro_mm_stat g_stat;
 
 #define IN_POOL(addr) ((void *)(addr) < (g_pool_addr + (g_pool_pages<<PAGE_SHIFT)) \
@@ -183,14 +183,14 @@ static void* alloc()
 {
 	struct block_info *block;
 
-	LIGHT_LOCK(&g_lock);
+	MICORO_LOCK(&g_lock);
 	block = g_free_list;
 	if (block) {
 		g_free_list = block->next;
 		g_stat.alloc_count++;
 		g_stat.use_block_num++;
 	}
-	LIGHT_UNLOCK(&g_lock);
+	MICORO_UNLOCK(&g_lock);
 
 	if (!block) return NULL;
 
@@ -221,7 +221,7 @@ static int release(void *ptr)
 		return -2;
 	}
 
-	LIGHT_LOCK(&g_lock);
+	MICORO_LOCK(&g_lock);
 	/* within lock for mem concurrency */
 	block->tag1 = BLOCK_TAG_1;
 	block->tag2 = BLOCK_TAG_2;
@@ -229,7 +229,7 @@ static int release(void *ptr)
 	g_free_list = block;
 	g_stat.release_count++;
 	g_stat.use_block_num--;
-	LIGHT_UNLOCK(&g_lock);
+	MICORO_UNLOCK(&g_lock);
 	
 	return 0;
 }

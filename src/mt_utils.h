@@ -30,6 +30,7 @@
 #ifndef __MT_UTILS_H__
 #define __MT_UTILS_H__
 
+#include <config.h>
 #include <sched.h>
 #include <stdint.h>
 
@@ -38,25 +39,36 @@
 #define _impl_CASSERT_LINE(predicate, line) \
 	typedef char _impl_PASTE(assertion_failed_line_,line)[2*!!(predicate)-1];
 
-
-#ifdef MICORO_MT
-#	define ATOM_SWAP32 xchg_swap32
-#	define LIGHT_LOCK light_lock
-#	define LIGHT_UNLOCK light_unlock
-#else
-#   define ATOM_SWAP32 simple_swap32
-#	define LIGHT_LOCK(lock) do { (void)(lock); } while (0)
-#	define LIGHT_UNLOCK(lock) do { (void)(lock); } while (0)
+#ifndef MICORO_MT
+#	define MICORO_MT 1
 #endif
 
-static inline void xchg_swap32(uint32_t *target, uint32_t *value)
-{
-	__asm__ __volatile__ (
-			"xchgl %0, %1"
-			:"=r"(*value)
-			:"m"(*target), "0"(*value)
-			:"memory" );
-}
+#if MICORO_MT
+#	if MICORO_X86_OPTIMIZE
+#		include "x86_mt_utils.h"
+#		define ATOM_SWAP32 xchg_swap32
+#		define MICORO_LOCK_T light_lock_t
+#		define MICORO_LOCK_INITVAL LIGHT_LOCK_INIT
+#		define MICORO_LOCK_INIT light_lock_init
+#		define MICORO_LOCK light_lock
+#		define MICORO_UNLOCK light_unlock
+#	else
+#		include <pthread.h>
+#		define ATOM_SWAP32 lock_swap32
+#		define MICORO_LOCK_T pthread_mutex_t
+#		define MICORO_LOCK_INITVAL PTHREAD_MUTEX_INITIALIZER
+#		define MICORO_LOCK_INIT(lock) pthread_mutex_init(lock, NULL)
+#		define MICORO_LOCK pthread_mutex_lock
+#		define MICORO_UNLOCK pthread_mutex_unlock
+#	endif
+#else
+#   define ATOM_SWAP32 simple_swap32
+#	define MICORO_LOCK_T int
+#	define MICORO_LOCK_INITVAL {0}
+#	define MICORO_LOCK_INIT(lock) do { (void)(lock); } while (0)
+#	define MICORO_LOCK(lock) do { (void)(lock); } while (0)
+#	define MICORO_UNLOCK(lock) do { (void)(lock); } while (0)
+#endif
 
 static inline void simple_swap32(uint32_t *target, uint32_t *value)
 {
@@ -65,57 +77,12 @@ static inline void simple_swap32(uint32_t *target, uint32_t *value)
 	*value = tmp;
 }
 
-typedef struct {
-	volatile int val;
-} light_lock_t;
-
-#define LIGHT_LOCK_INIT {1}
-#define light_lock_init light_unlock
-
-static inline void light_lock(light_lock_t *lock)
+static inline void lock_swap32(uint32_t *target, uint32_t *value)
 {
-	/* fast spin
-	 * borrowed from kernel-2.6.16
-	 * ~16ns if no spin
-	 */
-	__asm__ __volatile__ (
-			"\n1:\t" );
-
-	__asm__ __volatile__ (
-			"\n2:\t"
-			"lock ; "
-			"decl %0\n\t"
-			"jns 5f\n"
-			"3:\t"
-			"rep;nop\n\t"
-			"incl %1\n\t"
-			"cmpl $5000,%1\n\t" /* ~ 3us */
-			"jae 4f\n\t"
-			"cmpl $0,%0\n\t"
-			"jle 3b\n\t"
-			"jmp 2b\n"
-			"4:\n\t"
-			:"=m"(lock->val)
-			:"r"(0)
-			:"memory" );
-	/* slow spin
-	 * if the lock-owner-thread is SUSPENDED busywait is meaningless
-	 * sched_yield may help or less harmful
-	 */
-	while (lock->val <= 0) {
-		sched_yield();
-	}
-	__asm__ __volatile__ (
-			"jmp 1b\n"
-			"5:\n\t");
-}
-
-static inline void light_unlock(light_lock_t *lock)
-{
-	__asm__ __volatile__ (
-			"movl $1,%0"
-			:"=m"(lock->val)
-			: :"memory" );
+	MICORO_LOCK_T lock = MICORO_LOCK_INITVAL;
+	MICORO_LOCK(&lock);
+	simple_swap32(target, value);
+	MICORO_UNLOCK(&lock);
 }
 
 int init_once(int *init_flag);

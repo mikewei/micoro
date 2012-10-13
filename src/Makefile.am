@@ -1,3 +1,4 @@
+AM_CPPFLAGS = -D_GNU_SOURCE -D_XOPEN_SOURCE
 if GCC
 AM_CFLAGS += -Wall
 endif
@@ -20,19 +21,27 @@ libmicoro_SOURCES = \
 	mt_utils.h
 
 libmicoro_la_SOURCES = $(libmicoro_SOURCES)
-libmicoro_la_LIBADD = libtmp.la
+libmicoro_la_CPPFLAGS = $(AM_CPPFLAGS) -DMICORO_MT=0
 libmicoro_la_LDFLAGS = -static
 
 libmicoro_mt_la_SOURCES = $(libmicoro_SOURCES)
-libmicoro_mt_la_CPPFLAGS = -DMICORO_MT
-libmicoro_mt_la_LIBADD = libtmp.la
+libmicoro_mt_la_CPPFLAGS = $(AM_CPPFLAGS) -DMICORO_MT=1 
 libmicoro_mt_la_LDFLAGS = -static
 
+if MICORO_X86_OPTIMIZE
+libmicoro_SOURCES += \
+	x86_coro_impl.c \
+	x86_mt_utils.h
+
+libmicoro_la_LIBADD = libtmp.la
+libmicoro_mt_la_LIBADD = libtmp.la
+
 noinst_LTLIBRARIES = libtmp.la
-
 libtmp_la_SOURCES = \
-	coro_sw_O0.c
-
+	x86_coro_sw_O0.c
 libtmp_la_CFLAGS = $(AM_CFLAGS) -O0
 libtmp_la_LDFLAGS = -static
+else
+libmicoro_SOURCES += uctx_coro_impl.c
+endif
 

@@ -11,38 +11,45 @@ AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 LT_INIT
 
-AC_ARG_ENABLE([cpu-limit],
-			  [AS_HELP_STRING([--disable-cpu-limit],
-							  [do not limit cpu arch to x86])],
+AC_ARG_ENABLE([x86-optimize],
+			  [AS_HELP_STRING([--disable-x86-optimize],
+							  [do not optimize for x86, more portable but lower performace])],
 			  [],
-			  [enable_cpu_limit=yes])
-AC_ARG_ENABLE([gcc-limit],
-			  [AS_HELP_STRING([--disable-gcc-limit],
-							  [do not limit compiler to gcc])],
+			  [enable_x86_optimize=yes])
+AC_ARG_ENABLE([force-x86],
+			  [AS_HELP_STRING([--enable-force-x86],
+							  [force to consider cpu as x86])],
 			  [],
-			  [enable_gcc_limit=yes])
+			  [enable_force_x86=no])
+AC_ARG_ENABLE([force-gcc],
+			  [AS_HELP_STRING([--enable-force-gcc],
+							  [force to consider cc as gcc])],
+			  [],
+			  [enable_force_gcc=no])
 
 # Check for cpu.
 AC_CANONICAL_HOST
 AS_CASE(["$host_cpu"], 
-		[x86_64], [],
-		[i?86], []
-		[i?86-*], []
-		[AS_IF([test "x$enable_cpu_limit" = xyes],
-			   [AC_MSG_ERROR([only support x86 now, use --disable-cpu-limit to force build!])])])
+		[x86_6], [arch_type=x86],
+		[i?86], [arch_type=x86],
+		[i?86-*], [arch_type=x86],
+		[arch_type=other]])
+AS_IF([test "x$enable_force_x86" = xyes], [arch_type=x86])
+AS_IF([test "x$arch_type" != xx86], [enable_x86_optimize=no])
 
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_CC_C_O
-AM_CONDITIONAL(GCC, test "x$GCC" = xyes)
-AS_IF([test "x$GCC" != xyes -a "x$enable_gcc_limit" = xyes],
-	  [AC_MSG_ERROR([build without gcc is not tested, use --disable-gcc-limit to force build!])])
-
+AS_IF([test "x$GCC" = xyes -o "x$enable_force_gcc" = xyes],
+	  [use_gcc=yes],[use_gcc=no])
+AM_CONDITIONAL(GCC, test "x$use_gcc" = xyes)
 AC_SUBST([AM_CFLAGS], ["$CFLAGS"])
 CFLAGS=""
 
-#AC_PROG_INSTALL
-#AC_PROG_MAKE_SET
+AS_IF([test "x$use_gcc" != xyes], [enable_x86_optimize=no])
+AM_CONDITIONAL(MICORO_X86_OPTIMIZE, test "x$enable_x86_optimize" = xyes)
+AS_IF([test "x$enable_x86_optimize" = xyes],
+	  [AC_DEFINE([MICORO_X86_OPTIMIZE], [1], [use optimized x86 implementation])])
 
 # Checks for libraries.
 
@@ -60,5 +67,18 @@ AC_FUNC_MALLOC
 AC_FUNC_MMAP
 AC_CHECK_FUNCS([alarm gettimeofday memset munmap setlocale])
 
+AH_TOP([
+#ifndef __MICORO_CONFIG_H__
+#define __MICORO_CONFIG_H__
+])
+AH_BOTTOM([
+#endif /* __MICORO_CONFIG_H__ */
+])
+
 AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
 AC_OUTPUT
+
+AS_IF([test "x$enable_x86_optimize" = xyes],
+	  [impl_mode=optimized-x86-asm], [impl_mode=ucontext])
+AC_MSG_NOTICE([use $impl_mode implementation])
+
