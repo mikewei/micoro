@@ -22,25 +22,21 @@ considerations across disign and implementation.
    * portable for non-x86 using ucontext
    * running activity statistics
 
-
 2. Requirement
 
-   Currently only x86 system is supported, and
-   only GCC compatible compiler is supported.
-
+   Currently only POSIX systems are supported.
    Some tested platform:
      Linux-2.6.16  x86_32
-	 Linux-2.6.32  x86_64
-	 Linux-3.2     x86_64  GCC-4.7.1
-	 MacOS-10.7.4  x86_64  LLVM-GCC-4.2.1
-	 FreeBSD-9.0   x86_64  GCC-4.2.1
-	 Cygwin_NT-6.1   i686  GCC-4.5.3
-
+     Linux-2.6.32  x86_64
+     Linux-3.2     x86_64  GCC-4.7.1
+     MacOS-10.7.4  x86_64  LLVM-GCC-4.2.1
+     FreeBSD-9.0   x86_64  GCC-4.2.1
+     Cygwin_NT-6.1   i686  GCC-4.5.3
 
 3. Install
 
 3.1 install from git source
-    
+
    git clone http://xxx/micoro.git
    cd micoro
    autoreconf -i
@@ -56,7 +52,6 @@ considerations across disign and implementation.
    make
    sudo make install
 
-
 4. Performance
 
    micoro has much higher performance compared with others
@@ -68,10 +63,8 @@ considerations across disign and implementation.
    GNU Pth -     5,876 switches per second
    pthread -   237,318 switches per second
        PCL -   879,165 switches per second
-	micoro - 4,577,256 switches per second
-
+    micoro - 4,577,256 switches per second
 
 5. Bug report
 
    please email to <bin@vip.qq.com>
-
