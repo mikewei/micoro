@@ -17,7 +17,7 @@ int test1()
 {
 	void *s;
 	coro_t coro;
-	if (coro_init(4096*2, 10) < 0)
+	if (coro_init(4096*64, 10) < 0)
 		return -1;
 	if (coro_create(&coro, test1_coro) < 0)
 		return -2;

@@ -73,7 +73,7 @@ int main()
 	pthread_t lt1, lt2, wt1, wt2;
 	struct coro_stat cur_stat, last_stat = {0};
 
-	assert(coro_init(4096, 100000) == 0);
+	assert(coro_init(4096*8, 10000) == 0);
 	assert(pthread_create(&lt1, NULL, launcher, NULL) == 0);
 	assert(pthread_create(&lt2, NULL, launcher, NULL) == 0);
 	assert(pthread_create(&wt1, NULL, worker, NULL) == 0);
