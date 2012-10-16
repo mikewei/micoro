@@ -9,6 +9,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+AM_PROG_AR
 LT_INIT
 
 AC_ARG_ENABLE([x86-optimize],
